@@ -1,0 +1,323 @@
+{% comment %}Formulario de convocatoria en 3 bloques con campos dinámicos por tipo (Alpine)
+y barra de transparencia en vivo. Contexto: form, puntos_transp (dict criterio→%).
+Estilos de input escopados a .form-pro (no alteran el .campo global).{% endcomment %}
+{{ puntos_transp|json_script:"puntos-transp" }}
+
+<style>
+  /* Inputs modernos, solo dentro de este formulario (no toca el resto del sitio) */
+  .form-pro .campo label { display:block; font-size:.8rem; font-weight:600; color:#475569; margin-bottom:.45rem; letter-spacing:.01em; }
+  .form-pro .campo input:not([type="checkbox"]):not([type="radio"]),
+  .form-pro .campo select,
+  .form-pro .campo textarea {
+    width:100%; margin-top:0; background:#FAFAFA; border:1px solid #E6E8EE; border-radius:.75rem;
+    padding:.7rem .9rem; min-height:2.875rem; font-size:.9rem; color:#0f172a;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .form-pro .campo textarea { min-height:auto; line-height:1.55; }
+  .form-pro .campo input:not([type="checkbox"]):not([type="radio"])::placeholder,
+  .form-pro .campo textarea::placeholder { color:#94a3b8; }
+  .form-pro .campo input:not([type="checkbox"]):not([type="radio"]):hover,
+  .form-pro .campo select:hover, .form-pro .campo textarea:hover { border-color:#cbd5e1; }
+  .form-pro .campo input:focus, .form-pro .campo select:focus, .form-pro .campo textarea:focus {
+    outline:none; background:#fff; border-color:#7A1F2C; box-shadow:0 0 0 4px rgba(122,31,44,.10);
+  }
+  /* Fila de checkbox tipo "switch sutil" */
+  .form-pro .check-row { display:flex; align-items:flex-start; gap:.65rem; padding:.75rem .9rem;
+    border:1px solid #EDEFF3; border-radius:.75rem; background:#FAFAFA; transition:border-color .15s, background .15s; }
+  .form-pro .check-row:hover { border-color:#e2e8f0; background:#fff; }
+  /* Control segmentado Sí / No / No especificar (tri-estado) */
+  .form-pro .seg-tri { display:flex; width:100%; gap:.25rem; padding:.25rem; border-radius:.75rem;
+    background:#F1F3F7; border:1px solid #E6E8EE; }
+  .form-pro .seg-tri button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
+    min-height:2.25rem; padding:.4rem .5rem; border-radius:.55rem; font-size:.85rem; font-weight:500;
+    color:#64748b; transition:background .15s, color .15s, box-shadow .15s; }
+  .form-pro .seg-tri button:hover { color:#0f172a; }
+  .form-pro .seg-tri button.seg-on { background:#fff; color:#7A1F2C; font-weight:600;
+    box-shadow:0 1px 2px rgba(15,23,42,.10); }
+</style>
+
+{% comment %}El estado Alpine (x-data="formConvocatoria()") vive en el <form> que incluye
+este parcial, para que el botón "Enviar" —fuera de este div— pueda leer listo/faltan.{% endcomment %}
+<div class="form-pro space-y-6">
+  {% if form.non_field_errors %}
+  <div class="rounded-xl border border-peligro/30 bg-peligro/5 p-4 text-sm text-peligro">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  {# ===== Bloque 1 · Datos esenciales ===== #}
+  <fieldset class="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
+    <legend class="float-none w-full mb-6">
+      <div class="flex items-center gap-3">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-granate-700 text-white text-sm font-bold">1</span>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 leading-tight">Datos esenciales</h2>
+          <p class="text-sm text-slate-500">Lo mínimo para publicar: tipo, puesto y cómo postular.</p>
+        </div>
+      </div>
+    </legend>
+
+    <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+      <div class="campo sm:col-span-2"><label for="{{ form.tipo.id_for_label }}">Tipo de convocatoria <span class="text-peligro">*</span></label>
+        <select name="tipo" id="{{ form.tipo.id_for_label }}" x-model="tipo">
+          {% for value, label in form.tipo.field.choices %}
+          <option value="{{ value }}" {% if form.tipo.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>{{ form.tipo.errors }}
+      </div>
+      {% for f in form %}{% if f.name in "titulo,modalidad,ubicacion,duracion_estimada,fecha_limite,medio_postulacion,email_contacto" %}
+      <div class="campo">
+        <label for="{{ f.id_for_label }}">{{ f.label }} <span class="text-peligro">*</span></label>
+        {{ f }}
+        {% if f.help_text %}<p class="mt-1 text-xs text-slate-500">{{ f.help_text }}</p>{% endif %}
+        {{ f.errors }}
+      </div>
+      {% endif %}{% endfor %}
+      {% for f in form %}{% if f.name == "descripcion" %}
+      <div class="campo sm:col-span-2"><label for="{{ f.id_for_label }}">{{ f.label }} <span class="text-peligro">*</span></label>{{ f }}{{ f.errors }}</div>
+      {% endif %}{% endfor %}
+
+      {# Carreras objetivo: multi-selección con búsqueda (puedes elegir varias) #}
+      <div class="sm:col-span-2" x-data="{ q: '' }">
+        <span class="block text-xs font-semibold text-slate-600 mb-2">{{ form.carreras_objetivo.label }}
+          <span class="font-normal text-slate-400">· puedes elegir varias</span></span>
+        <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div class="relative border-b border-slate-100">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+            <input type="text" x-model="q" placeholder="Buscar carrera…"
+                   class="w-full border-0 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none">
+          </div>
+          <div class="max-h-56 overflow-y-auto p-1.5">
+            {% for sub in form.carreras_objetivo %}
+            <label x-show="'{{ sub.choice_label|lower|escapejs }}'.includes(q.toLowerCase().trim())"
+                   class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer">
+              {{ sub.tag }} <span>{{ sub.choice_label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {{ form.carreras_objetivo.errors }}
+      </div>
+    </div>
+
+    <label class="check-row mt-5 text-sm cursor-pointer">{{ form.no_discriminacion }}
+      <span class="text-slate-600">{{ form.no_discriminacion.label }} <span class="text-peligro">*</span> <span class="text-slate-400">(Ley 26772)</span></span></label>
+    {{ form.no_discriminacion.errors }}
+
+    <p class="mt-4 text-xs text-slate-500">Los campos con <span class="text-peligro font-semibold">*</span> son obligatorios para publicar.</p>
+  </fieldset>
+
+  {# ===== Bloque 2 · Según el tipo (campos dinámicos) ===== #}
+  <fieldset class="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
+    <legend class="float-none w-full mb-6">
+      <div class="flex items-center gap-3">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-granate-700 text-white text-sm font-bold">2</span>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 leading-tight">Según el tipo</h2>
+          <p class="text-sm text-slate-500" x-text="ayudaTipo()"></p>
+        </div>
+      </div>
+    </legend>
+
+    {# Aún sin tipo: aviso guía (mantiene la secuencia 1·2·3 sin "saltos") #}
+    <div x-show="!tipo" class="flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-4 text-sm text-slate-500">
+      <i data-lucide="list-checks" class="w-5 h-5 shrink-0 text-slate-400"></i>
+      Elige un <span class="font-medium text-slate-600">tipo de convocatoria</span> arriba para ver los campos que aplican.
+    </div>
+
+    <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2" x-show="tipo" x-cloak>
+      {# Remuneración: todos los tipos pagados (no voluntariado) #}
+      <div class="campo" x-show="tipo && tipo !== 'voluntariado'">
+        <label for="{{ form.subvencion_remuneracion.id_for_label }}">{{ form.subvencion_remuneracion.label }}</label>
+        {{ form.subvencion_remuneracion }}{{ form.subvencion_remuneracion.errors }}
+      </div>
+      <div class="campo" x-show="tipo && tipo !== 'voluntariado' && tipo !== 'beca'">
+        <label for="{{ form.jornada_horas.id_for_label }}">{{ form.jornada_horas.label }}</label>
+        {{ form.jornada_horas }}{{ form.jornada_horas.errors }}
+      </div>
+
+      {# Régimen laboral: trainee, empleo, CAS, consultoría (con sugerencias) #}
+      <div class="campo" x-show="['trainee','empleo','cas','consultoria'].includes(tipo)">
+        <label for="{{ form.regimen.id_for_label }}">{{ form.regimen.label }}</label>
+        {{ form.regimen }}
+        <datalist id="regimenes-list">
+          <option value="Régimen privado (D.L. 728)"></option>
+          <option value="Régimen CAS (D.L. 1057)"></option>
+          <option value="Régimen público (D.L. 276)"></option>
+          <option value="Régimen MYPE"></option>
+          <option value="Locación de servicios (recibo por honorarios)"></option>
+          <option value="Practicante (Ley 28518)"></option>
+        </datalist>
+        <p class="mt-1 text-xs text-slate-500">Elige una sugerencia o escribe el tuyo.</p>
+        {{ form.regimen.errors }}
+      </div>
+
+      {# Convenio + ciclo/egreso: prácticas #}
+      <div x-show="['practica_preprofesional','practica_profesional'].includes(tipo)">
+        {% include "convocatorias/_tri_estado.html" with field=form.requiere_convenio %}
+      </div>
+      <div class="campo" x-show="tipo === 'practica_preprofesional'">
+        <label for="{{ form.ciclo_minimo.id_for_label }}">{{ form.ciclo_minimo.label }}</label>
+        {{ form.ciclo_minimo }}{{ form.ciclo_minimo.errors }}
+      </div>
+      <div class="campo" x-show="tipo === 'practica_profesional'">
+        <label for="{{ form.tiempo_egreso_meses.id_for_label }}">{{ form.tiempo_egreso_meses.label }}</label>
+        {{ form.tiempo_egreso_meses }}{{ form.tiempo_egreso_meses.errors }}
+      </div>
+
+      {# CAS: bases + cronograma #}
+      <div class="campo" x-show="tipo === 'cas'">
+        <label for="{{ form.bases_url.id_for_label }}">{{ form.bases_url.label }}</label>
+        {{ form.bases_url }}{{ form.bases_url.errors }}
+      </div>
+      <div class="campo sm:col-span-2" x-show="tipo === 'cas'">
+        <label for="{{ form.cronograma.id_for_label }}">{{ form.cronograma.label }}</label>
+        {{ form.cronograma }}{{ form.cronograma.errors }}
+      </div>
+
+      {# Beca: entidad otorgante #}
+      <div class="campo" x-show="tipo === 'beca'">
+        <label for="{{ form.entidad_otorgante.id_for_label }}">{{ form.entidad_otorgante.label }}</label>
+        {{ form.entidad_otorgante }}{{ form.entidad_otorgante.errors }}
+      </div>
+
+      {# Seguro: prácticas / empleo / trainee #}
+      <div x-show="['practica_preprofesional','practica_profesional','empleo','trainee'].includes(tipo)">
+        {% include "convocatorias/_tri_estado.html" with field=form.incluye_seguro %}
+      </div>
+      {# No vínculo: CAS / consultoría #}
+      <label class="campo check-row text-sm cursor-pointer self-end" x-show="['cas','consultoria'].includes(tipo)">
+        {{ form.no_vinculo }}<span class="text-slate-600">{{ form.no_vinculo.label }}</span>
+      </label>
+    </div>
+
+    <p class="mt-5 flex items-start gap-2 rounded-xl bg-info/5 p-3.5 text-xs text-slate-600" x-show="tipo === 'voluntariado'" x-cloak>
+      <i data-lucide="info" class="w-4 h-4 text-info shrink-0 mt-0.5"></i>
+      El voluntariado no admite remuneración por ley; deja los montos en blanco.
+    </p>
+  </fieldset>
+
+  {# ===== Bloque 3 · Mejora tu transparencia ===== #}
+  <fieldset class="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
+    <legend class="float-none w-full mb-6">
+      <div class="flex items-center gap-3">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-granate-700 text-white text-sm font-bold">3</span>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 leading-tight">Mejora tu transparencia</h2>
+          <p class="text-sm text-slate-500">Opcional, pero sube tu % y te ayuda a llegar a más egresados.</p>
+        </div>
+      </div>
+    </legend>
+
+    <p class="text-xs text-slate-500 -mt-2 mb-5">El panel lateral muestra tu % de transparencia en vivo y qué factores te faltan.</p>
+
+    <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+      {% for f in form %}{% if f.name in "banda_salarial_min,banda_salarial_max,vacantes" %}
+      <div class="campo">
+        <label for="{{ f.id_for_label }}">{{ f.label }} <span class="text-xs font-normal text-slate-400">· opcional</span></label>
+        {{ f }}
+        {% if f.help_text %}<p class="mt-1 text-xs text-slate-500">{{ f.help_text }}</p>{% endif %}
+        {{ f.errors }}
+      </div>
+      {% endif %}{% endfor %}
+      {% for f in form %}{% if f.name in "beneficios" %}
+      <div class="campo sm:col-span-2"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}</div>
+      {% endif %}{% endfor %}
+    </div>
+
+    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+      <label class="check-row text-sm cursor-pointer">{{ form.salario_confidencial }}
+        <span class="text-slate-600">{{ form.salario_confidencial.label }} <span class="text-slate-400">(oculta la banda y baja tu transparencia)</span></span></label>
+      <label class="check-row text-sm cursor-pointer">{{ form.discapacidad }}
+        <span class="text-slate-600">{{ form.discapacidad.label }}</span></label>
+    </div>
+  </fieldset>
+</div>
+
+<script>
+  function formConvocatoria() {
+    return {
+      tipo: '{{ form.tipo.value|default:"" }}',
+      pct: 0,
+      proximo: '',
+      listo: false,   // habilita el botón "Enviar" (Eje 3)
+      faltan: [],     // campos pendientes para el tooltip del botón
+      estado: {},     // criterio -> bool (para el panel lateral de transparencia)
+      puntos: JSON.parse(document.getElementById('puntos-transp').textContent),
+      _orden: ['banda_salarial','descripcion_completa','duracion','modalidad_ubicacion','vacantes','beneficios','contacto','discapacidad'],
+      _labels: {
+        banda_salarial: 'Banda salarial visible',
+        descripcion_completa: 'Descripción completa (80+ caract.)',
+        duracion: 'Duración estimada',
+        modalidad_ubicacion: 'Modalidad y ubicación',
+        vacantes: 'N.º de vacantes',
+        beneficios: 'Beneficios',
+        contacto: 'Contacto verificable',
+        discapacidad: 'Apertura a discapacidad',
+      },
+      _etiquetas: {
+        banda_salarial: 'la banda salarial visible',
+        descripcion_completa: 'una descripción más completa (80+ caracteres)',
+        duracion: 'la duración estimada',
+        modalidad_ubicacion: 'modalidad y ubicación',
+        vacantes: 'el n.º de vacantes',
+        beneficios: 'los beneficios',
+        contacto: 'un contacto verificable',
+        discapacidad: 'apertura a personas con discapacidad',
+      },
+      _ayuda: {
+        practica_preprofesional: 'Declara el convenio UNSA y el ciclo mínimo. La subvención no puede ser menor a la RMV.',
+        practica_profesional: 'Declara el convenio UNSA y el tiempo máximo de egreso. La subvención no puede ser menor a la RMV.',
+        trainee: 'Indica el régimen laboral. La remuneración no puede ser menor a la RMV.',
+        empleo: 'Indica el régimen laboral. La remuneración no puede ser menor a la RMV.',
+        cas: 'Adjunta las bases y el cronograma; el honorario es libre.',
+        voluntariado: 'No requiere campos adicionales: el voluntariado no admite remuneración.',
+        beca: 'Indica la entidad otorgante y el monto de la beca.',
+        consultoria: 'Indica el régimen; el honorario es libre y no genera vínculo laboral.',
+      },
+      ayudaTipo() { return this._ayuda[this.tipo] || 'Completa lo que aplique a tu tipo de convocatoria (algunos son obligatorios por ley).'; },
+      init() { this.$nextTick(() => this.recalc()); },
+      _v(n) { const el = this.$root.querySelector(`[name="${n}"]`); return el ? (el.value || '').trim() : ''; },
+      _chk(n) { const el = this.$root.querySelector(`[name="${n}"]`); return el ? el.checked : false; },
+      recalc() {
+        const ok = {
+          banda_salarial: !!(this._v('banda_salarial_min') && this._v('banda_salarial_max') && !this._chk('salario_confidencial')),
+          descripcion_completa: this._v('descripcion').length >= 80,
+          duracion: !!this._v('duracion_estimada'),
+          modalidad_ubicacion: !!(this._v('modalidad') && this._v('ubicacion')),
+          vacantes: parseInt(this._v('vacantes') || '0', 10) > 0,
+          beneficios: !!this._v('beneficios'),
+          contacto: !!(this._v('email_contacto') || this._v('medio_postulacion')),
+          discapacidad: this._chk('discapacidad'),
+        };
+        let s = 0, mejor = null, mejorPts = -1;
+        for (const k in this.puntos) {
+          if (ok[k]) { s += this.puntos[k]; }
+          else if (this.puntos[k] > mejorPts) { mejorPts = this.puntos[k]; mejor = k; }
+        }
+        this.pct = Math.min(100, s);
+        this.estado = ok;
+        this.proximo = mejor ? `+${this.puntos[mejor]}% si agregas ${this._etiquetas[mejor] || mejor}` : '';
+
+        // --- Validación forzosa para habilitar "Enviar" (Eje 3 · anti-opacidad) ---
+        // Espeja faltantes_nivel_1() del servidor; el servidor sigue siendo la autoridad.
+        const reqStr = {
+          titulo: 'el título', descripcion: 'la descripción', modalidad: 'la modalidad',
+          ubicacion: 'la ubicación', duracion_estimada: 'la duración estimada',
+          fecha_limite: 'la fecha límite', medio_postulacion: 'cómo postular',
+          email_contacto: 'el email de contacto',
+        };
+        const faltan = [];
+        for (const n in reqStr) { if (!this._v(n)) faltan.push(reqStr[n]); }
+        if (!this._chk('no_discriminacion')) faltan.push('la declaración de no discriminación');
+        // Decisión salarial forzada: banda visible o "confidencial". El voluntariado
+        // no admite remuneración por ley, así que queda exento de este requisito.
+        const bandaOk = !!(this._v('banda_salarial_min') && this._v('banda_salarial_max'));
+        const salarioDecidido = this.tipo === 'voluntariado' || bandaOk || this._chk('salario_confidencial');
+        if (!salarioDecidido) faltan.push('el rango salarial (o marcar “confidencial”)');
+        this.faltan = faltan;
+        this.listo = faltan.length === 0;
+
+        if (window.lucide) lucide.createIcons();
+      },
+    };
+  }
+</script>

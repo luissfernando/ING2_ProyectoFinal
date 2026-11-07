@@ -1,0 +1,47 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Publicar convocatoria — CONECTA UNSA{% endblock %}
+{% block dashboard_title %}Publicar convocatoria{% endblock %}
+{% block user_role %}{{ empresa.razon_social|default:"Empresa" }}{% endblock %}
+{% block sidebar_items %}{% include "empresas/_sidebar_empresa.html" with seccion="publicar" %}{% endblock %}
+
+{% block dashboard_content %}
+<section class="mx-auto max-w-6xl">
+  {# Encabezado #}
+  <div class="mb-7">
+    <a href="{% url 'empresas:dashboard' %}" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-granate-700">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Volver al panel
+    </a>
+    <h1 class="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Publicar convocatoria</h1>
+    <p class="mt-1.5 text-sm text-slate-500">
+      Completa los datos y envíala a revisión. Publicas como
+      <span class="font-medium text-slate-700">{{ empresa.razon_social }}</span>.
+    </p>
+  </div>
+
+  <form method="post" novalidate
+        x-data="formConvocatoria()" @input="recalc()" @change="recalc()">
+    {% csrf_token %}
+    <div class="grid gap-6 lg:grid-cols-3 items-start">
+      <div class="lg:col-span-2 min-w-0">
+        {% include "convocatorias/_form.html" %}
+      </div>
+      {% include "convocatorias/_panel_transparencia.html" %}
+    </div>
+
+    {# Barra de acciones #}
+    <div class="mt-7 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+      <a href="{% url 'empresas:dashboard' %}"
+         class="inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100">
+        Cancelar
+      </a>
+      <button type="submit"
+              :disabled="!listo"
+              :title="faltan.length ? 'Falta completar: ' + faltan.join(', ') : ''"
+              :class="!listo ? 'opacity-50 cursor-not-allowed' : 'hover:bg-granate-800'"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-granate-700 px-9 py-3 text-sm font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-granate-700 focus-visible:ring-offset-2 transition">
+        <i data-lucide="send" class="w-4 h-4"></i> Publicar convocatoria
+      </button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,295 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CONECTA UNSA{% endblock %}</title>
+  {% block meta %}{% endblock %}
+
+  <!-- PWA: app instalable (manifest + tema institucional) -->
+  <link rel="manifest" href="{% url 'pwa_manifest' %}">
+  <meta name="theme-color" content="#7A1F2C">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CONECTA UNSA">
+  <link rel="apple-touch-icon" href="{% static 'img/pwa/icon-192.png' %}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/pwa/icon-512.png' %}">
+
+  <!-- Tipografía Inter (branding §3) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind (CDN, sin build de Node — NFR-PERF-1) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            granate: {
+              50: '#FBF2F3', 100: '#F5DEE1', 700: '#7A1F2C',
+              800: '#52151E', 900: '#3D1016',
+            },
+            exito: '#2E7D5B', alerta: '#B7791F', peligro: '#C0392B',
+            info: '#2563EB', dorado: '#C8A02C',
+          },
+        },
+      },
+    };
+  </script>
+  <!-- Alpine.js (CDN) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Lucide icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Campos de formulario: estilo único, accesible (NFR-A11Y). Fuente de verdad para .campo -->
+  <style>
+    [x-cloak] { display: none !important; }
+    /* Toasts: entrada suave (deslizan desde la derecha sin afectar el layout) */
+    @keyframes toastIn { from { opacity: 0; transform: translateX(1rem); } to { opacity: 1; transform: translateX(0); } }
+    [data-flash] { animation: toastIn .25s ease-out; }
+    @media (prefers-reduced-motion: reduce) { [data-flash] { animation: none; } }
+    /* Contenedor maestro: ancho casi completo en laptops, con tope elegante
+       en monitores grandes y gutters responsivos (UX — aprovecha el viewport
+       sin perder la jerarquía institucional). Reemplaza a max-w-6xl mx-auto px-4. */
+    .shell {
+      width: 100%;
+      max-width: 96rem;            /* ~1536px: amplio pero legible en pantallas grandes */
+      margin-inline: auto;
+      padding-inline: clamp(1rem, 4vw, 2.5rem);
+    }
+    .campo { display: block; }
+    .campo label { font-size: .85rem; font-weight: 500; color: #334155; display: block; }
+    .campo input:not([type="checkbox"]):not([type="radio"]),
+    .campo select,
+    .campo textarea {
+      width: 100%; border: 1px solid #cbd5e1; border-radius: .5rem;
+      padding: .55rem .75rem; margin-top: .25rem; background: #fff; color: #1e293b;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .campo input:not([type="checkbox"]):not([type="radio"]):hover,
+    .campo select:hover, .campo textarea:hover { border-color: #94a3b8; }
+    .campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible {
+      outline: none; border-color: #7A1F2C; box-shadow: 0 0 0 3px rgba(122, 31, 44, .18);
+    }
+    .campo input[type="checkbox"], .campo input[type="radio"] {
+      width: 1.05rem; height: 1.05rem; accent-color: #7A1F2C; flex: none; cursor: pointer;
+    }
+    .campo input[aria-invalid="true"], .campo .errorlist + input { border-color: #C0392B; }
+    .errorlist { color: #C0392B; font-size: .75rem; list-style: none; padding: 0; margin: .25rem 0 0; }
+    /* Foco visible accesible (WCAG AA, NFR-A11Y-2) para enlaces, botones y controles */
+    a:focus-visible, button:focus-visible, [role="tab"]:focus-visible, summary:focus-visible,
+    input[type="radio"]:focus-visible, input[type="checkbox"]:focus-visible {
+      outline: 2px solid #7A1F2C; outline-offset: 2px; border-radius: 4px;
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-white text-slate-800 font-sans antialiased flex flex-col">
+  <!-- Saltar al contenido (NFR-A11Y-2) -->
+  <a href="#contenido"
+     class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-granate-700 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">
+    Saltar al contenido
+  </a>
+
+  {% block header %}
+  {% with vn=request.resolver_match.view_name %}
+  <header class="sticky top-0 z-40 shadow-sm" x-data="{ open: false }">
+
+    <!-- ===== Nivel 1: franja de utilidades / públicos (oscura) ===== -->
+    {% block header_utilidad %}
+    <div class="hidden md:block bg-slate-900 text-slate-300 text-[13px]">
+      <div class="shell flex h-9 items-center gap-5">
+        <nav class="flex items-center gap-5" aria-label="Públicos">
+          <a href="{% url 'usuarios:login' %}" class="hover:text-white">Egresados</a>
+          <a href="{% url 'empresas:registro' %}" class="hover:text-white">Empresas</a>
+          <a href="https://www.unsa.edu.pe" target="_blank" rel="noopener" class="inline-flex items-center gap-1 hover:text-white">
+            Comunidad UNSA <i data-lucide="external-link" class="w-3 h-3"></i>
+          </a>
+        </nav>
+        <nav class="ml-auto flex items-center gap-5" aria-label="Utilidades">
+          <a href="{% url 'core:como_funciona' %}" class="hover:text-white">Ayuda</a>
+          <a href="mailto:empleabilidad@unsa.edu.pe" class="hover:text-white">Contacto</a>
+          <a href="{% url 'core:privacidad' %}" class="hover:text-white">Transparencia</a>
+          <a href="{% url 'usuarios:login' %}" class="inline-flex items-center hover:text-white" aria-label="Buscar convocatorias">
+            <i data-lucide="search" class="w-4 h-4"></i>
+          </a>
+        </nav>
+      </div>
+    </div>
+    {% endblock %}
+
+    <!-- ===== Nivel 2: barra principal de marca + navegación (blanca) ===== -->
+    <div class="bg-white border-b border-slate-200">
+      <div class="shell flex h-16 items-center gap-4 lg:h-[4.5rem]">
+        <!-- Lockup: logo institucional UNSA (colores naturales) + wordmark CONECTA UNSA -->
+        <a href="{% url 'core:home' %}" class="flex items-center gap-3">
+          <img src="{% static 'img/LOGO_UNSA.png' %}" alt="Universidad Nacional de San Agustín de Arequipa" class="h-9 w-auto lg:h-10">
+          <span class="leading-tight border-l border-slate-200 pl-3">
+            <span class="block text-base font-bold tracking-tight text-slate-800 sm:text-lg">CONECTA <span class="text-granate-700">UNSA</span></span>
+            <span class="hidden text-[11px] text-slate-400 sm:block">Comunicamos oportunidades, conectamos futuro.</span>
+          </span>
+        </a>
+
+        {% block nav %}
+        <!-- Navegación de escritorio -->
+        <nav class="ml-auto hidden items-center gap-1 md:flex" aria-label="Principal">
+          <a href="{% url 'core:home' %}" class="rounded-lg px-3 py-2 text-[15px] font-medium {% if vn == 'core:home' %}bg-granate-50 text-granate-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-granate-700{% endif %}">Inicio</a>
+          <a href="{% url 'usuarios:login' %}" class="rounded-lg px-3 py-2 text-[15px] font-medium text-slate-600 hover:bg-slate-50 hover:text-granate-700">Convocatorias</a>
+          <a href="{% url 'empresas:registro' %}" class="rounded-lg px-3 py-2 text-[15px] font-medium text-slate-600 hover:bg-slate-50 hover:text-granate-700">Empresas</a>
+          <a href="{% url 'core:como_funciona' %}" class="rounded-lg px-3 py-2 text-[15px] font-medium {% if vn == 'core:como_funciona' %}bg-granate-50 text-granate-700{% else %}text-slate-600 hover:bg-slate-50 hover:text-granate-700{% endif %}">Cómo funciona</a>
+
+          <span class="mx-2 h-6 w-px bg-slate-200"></span>
+
+          {% if user.is_authenticated %}
+            {% include "notificaciones/_campana.html" %}
+            <a href="{% url 'usuarios:post_login' %}" class="rounded-lg px-3 py-2 text-[15px] font-medium text-slate-600 hover:bg-slate-50 hover:text-granate-700">Mi panel</a>
+            <a href="{% url 'usuarios:logout' %}" class="inline-flex items-center gap-1.5 rounded-lg bg-granate-700 px-4 py-2 text-[15px] font-medium text-white hover:bg-granate-800">Salir</a>
+          {% else %}
+            <a href="{% url 'usuarios:login' %}" class="inline-flex items-center gap-2 rounded-lg bg-granate-700 px-4 py-2 text-[15px] font-semibold text-white hover:bg-granate-800">
+              <i data-lucide="log-in" class="w-4 h-4"></i> Iniciar sesión
+            </a>
+          {% endif %}
+        </nav>
+
+        <!-- Botón de menú móvil -->
+        <button type="button" @click="open = !open" :aria-expanded="open" aria-controls="menu-movil"
+                class="ml-auto inline-flex items-center justify-center rounded-lg p-2 text-slate-700 hover:bg-slate-100 md:hidden" aria-label="Abrir menú">
+          <i data-lucide="menu" class="w-6 h-6" x-show="!open"></i>
+          <i data-lucide="x" class="w-6 h-6" x-show="open" x-cloak></i>
+        </button>
+        {% endblock %}
+      </div>
+
+      <!-- Panel de navegación móvil -->
+      <div id="menu-movil" x-show="open" x-cloak x-transition.opacity class="border-t border-slate-200 md:hidden">
+        <nav class="shell flex flex-col py-3 text-[15px]" aria-label="Principal (móvil)">
+          <a href="{% url 'core:home' %}" class="rounded-lg px-3 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-granate-700">Inicio</a>
+          <a href="{% url 'usuarios:login' %}" class="rounded-lg px-3 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-granate-700">Convocatorias</a>
+          <a href="{% url 'empresas:registro' %}" class="rounded-lg px-3 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-granate-700">Empresas</a>
+          <a href="{% url 'core:como_funciona' %}" class="rounded-lg px-3 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-granate-700">Cómo funciona</a>
+          <a href="{% url 'core:como_funciona' %}" class="rounded-lg px-3 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-granate-700">Ayuda</a>
+          <div class="my-2 h-px bg-slate-200"></div>
+          {% if user.is_authenticated %}
+            <a href="{% url 'usuarios:post_login' %}" class="rounded-lg px-3 py-2.5 font-medium text-slate-700 hover:bg-slate-50 hover:text-granate-700">Mi panel</a>
+            <a href="{% url 'usuarios:logout' %}" class="mt-1 rounded-lg bg-granate-700 px-3 py-2.5 text-center font-semibold text-white">Salir</a>
+          {% else %}
+            <a href="{% url 'usuarios:login' %}" class="mt-1 inline-flex items-center justify-center gap-2 rounded-lg bg-granate-700 px-3 py-2.5 font-semibold text-white">
+              <i data-lucide="log-in" class="w-4 h-4"></i> Iniciar sesión
+            </a>
+          {% endif %}
+        </nav>
+      </div>
+    </div>
+  </header>
+  {% endwith %}
+  {% endblock %}
+
+  {% if messages %}
+  <!-- Avisos flotantes (toasts): posición fija para no desplazar el contenido -->
+  <div class="fixed bottom-4 inset-x-4 z-[60] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-96 pointer-events-none"
+       role="status" aria-live="polite">
+    {% for message in messages %}
+    <div data-flash class="pointer-events-auto flex items-start gap-3 rounded-xl border-l-4 bg-white px-4 py-3 text-sm shadow-lg ring-1 ring-black/5 transition duration-300
+                {% if message.tags == 'error' %}border-peligro
+                {% elif message.tags == 'warning' %}border-alerta
+                {% elif message.tags == 'success' %}border-exito
+                {% else %}border-info{% endif %}">
+      <i data-lucide="{% if message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}alert-triangle{% elif message.tags == 'success' %}check-circle-2{% else %}info{% endif %}"
+         class="mt-0.5 w-4 h-4 shrink-0
+                {% if message.tags == 'error' %}text-peligro{% elif message.tags == 'warning' %}text-alerta{% elif message.tags == 'success' %}text-exito{% else %}text-info{% endif %}"></i>
+      <span class="flex-1 text-slate-700 break-words">{{ message }}</span>
+      <button type="button" data-flash-close aria-label="Cerrar aviso" class="shrink-0 text-slate-400 hover:text-slate-600">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <main id="contenido" class="flex-1 w-full">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+  <footer class="bg-granate-900 text-white/80 mt-12">
+    <div class="shell py-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+      <div class="lg:col-span-2">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center bg-white rounded-md px-2 py-1">
+            <img src="{% static 'img/LOGO_UNSA.png' %}" alt="UNSA" class="h-7 w-auto">
+          </span>
+          <span class="font-bold text-white text-base">CONECTA <span class="text-white">UNSA</span></span>
+        </div>
+        <p class="mt-3 max-w-sm text-white/70">
+          Servicio institucional de comunicación y acceso a oportunidades laborales para
+          estudiantes y egresados de la Universidad Nacional de San Agustín de Arequipa.
+        </p>
+        <p class="mt-3 text-white/50 text-xs">Software público · Sin IA · Reglas transparentes y auditables.</p>
+      </div>
+      <nav aria-label="Enlaces">
+        <p class="text-white font-semibold">Enlaces</p>
+        <ul class="mt-3 space-y-2">
+          <li><a href="{% url 'core:home' %}" class="hover:text-white">Inicio</a></li>
+          <li><a href="{% url 'usuarios:login' %}" class="hover:text-white">Convocatorias</a></li>
+          <li><a href="{% url 'core:como_funciona' %}" class="hover:text-white">Sobre CONECTA UNSA</a></li>
+          <li><a href="{% url 'core:como_funciona' %}" class="hover:text-white">Ayuda</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Información">
+        <p class="text-white font-semibold">Información</p>
+        <ul class="mt-3 space-y-2">
+          <li><a href="{% url 'core:privacidad' %}" class="hover:text-white">Política de privacidad</a></li>
+          <li><a href="{% url 'core:terminos' %}" class="hover:text-white">Términos de uso</a></li>
+          <li><a href="{% url 'core:como_funciona' %}" class="hover:text-white">Transparencia del servicio</a></li>
+          <li><a href="mailto:empleabilidad@unsa.edu.pe" class="hover:text-white">Contacto institucional</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="border-t border-white/10">
+      <div class="shell py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/50">
+        <p>© 2026 Universidad Nacional de San Agustín de Arequipa. Todos los derechos reservados.</p>
+        {# TODO: reemplazar href por las URLs reales de redes institucionales #}
+        <nav class="flex items-center gap-1" aria-label="Redes sociales de la UNSA">
+          <a href="https://www.unsa.edu.pe" target="_blank" rel="noopener" aria-label="Facebook de la UNSA"
+             class="p-1.5 rounded hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"><i data-lucide="facebook" class="w-4 h-4"></i></a>
+          <a href="https://www.unsa.edu.pe" target="_blank" rel="noopener" aria-label="Instagram de la UNSA"
+             class="p-1.5 rounded hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"><i data-lucide="instagram" class="w-4 h-4"></i></a>
+          <a href="https://www.unsa.edu.pe" target="_blank" rel="noopener" aria-label="YouTube de la UNSA"
+             class="p-1.5 rounded hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"><i data-lucide="youtube" class="w-4 h-4"></i></a>
+          <a href="https://www.unsa.edu.pe" target="_blank" rel="noopener" aria-label="LinkedIn de la UNSA"
+             class="p-1.5 rounded hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"><i data-lucide="linkedin" class="w-4 h-4"></i></a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+  {% endblock %}
+
+  <script>window.addEventListener('load', () => window.lucide && lucide.createIcons());</script>
+  <!-- PWA: registrar el service worker (alcance de todo el sitio) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+  <script>
+    (function () {
+      function dismiss(el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(1rem)';
+        setTimeout(() => el.remove(), 300);
+      }
+      document.querySelectorAll('[data-flash]').forEach((el) => {
+        el.querySelector('[data-flash-close]')?.addEventListener('click', () => dismiss(el));
+        setTimeout(() => dismiss(el), 5000);
+      });
+    })();
+  </script>
+</body>
+</html>
