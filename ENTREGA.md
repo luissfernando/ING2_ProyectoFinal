@@ -25,6 +25,25 @@ siguiendo `specs/`. Todas las features (00→12) están implementadas con sus cr
 Ejecutar la suite: `pytest` (todo verde). Cobertura: lógica de servicios, reglas de acceso por
 rol, integridad de datos y flujos clave (estrategia-pruebas.md).
 
+## Laboratorio 05 — pruebas unitarias y dobles
+
+La suite existente usa `unittest`/`django.test.TestCase` como framework xUnit. Se añadieron
+pruebas unitarias de la entidad `Convocatoria` y pruebas de `publicar()` con `unittest.mock`.
+Como la arquitectura usa modelos Django con persistencia integrada y no una interfaz de
+repositorio separada, el doble verifica el límite de persistencia `save()` del agregado.
+
+Para ejecutar y generar los reportes solicitados:
+
+```bash
+mkdir -p reportes
+pytest --junitxml=reportes/pruebas.xml \
+  --cov=apps --cov-config=.coveragerc \
+  --cov-report=term-missing --cov-report=html:reportes/cobertura
+```
+
+El XML registra resultados PASÓ/FALLÓ; el informe HTML muestra la cobertura por archivo y
+línea. El paquete `pytest-cov` está incluido en `requirements.txt`.
+
 ## Cómo correr en local
 
 ```bash
